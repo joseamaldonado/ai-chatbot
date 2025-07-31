@@ -15,6 +15,14 @@ export const user = pgTable('User', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   email: varchar('email', { length: 64 }).notNull(),
   password: varchar('password', { length: 64 }),
+  // Subscription fields
+  stripeCustomerId: varchar('stripeCustomerId', { length: 255 }),
+  stripeSubscriptionId: varchar('stripeSubscriptionId', { length: 255 }),
+  subscriptionTier: varchar('subscriptionTier', { enum: ['free', 'weekly', 'monthly', 'yearly'] })
+    .notNull()
+    .default('free'),
+  subscriptionStatus: varchar('subscriptionStatus', { enum: ['active', 'canceled', 'past_due', 'incomplete', 'trialing'] }),
+  subscriptionEndsAt: timestamp('subscriptionEndsAt'),
 });
 
 export type User = InferSelectModel<typeof user>;

@@ -80,6 +80,83 @@ export async function createGuestUser() {
   }
 }
 
+export async function updateUserSubscription({
+  userId,
+  stripeCustomerId,
+  stripeSubscriptionId,
+  subscriptionTier,
+  subscriptionStatus,
+  subscriptionEndsAt,
+}: {
+  userId: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  subscriptionTier?: 'free' | 'weekly' | 'monthly' | 'yearly';
+  subscriptionStatus?: 'active' | 'canceled' | 'past_due' | 'incomplete' | 'trialing';
+  subscriptionEndsAt?: Date;
+}) {
+  try {
+    const updateData: any = {};
+    if (stripeCustomerId) updateData.stripeCustomerId = stripeCustomerId;
+    if (stripeSubscriptionId) updateData.stripeSubscriptionId = stripeSubscriptionId;
+    if (subscriptionTier) updateData.subscriptionTier = subscriptionTier;
+    if (subscriptionStatus) updateData.subscriptionStatus = subscriptionStatus;
+    if (subscriptionEndsAt) updateData.subscriptionEndsAt = subscriptionEndsAt;
+
+    return await db
+      .update(user)
+      .set(updateData)
+      .where(eq(user.id, userId))
+      .returning({
+        id: user.id,
+        email: user.email,
+        subscriptionTier: user.subscriptionTier,
+        subscriptionStatus: user.subscriptionStatus,
+      });
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to update user subscription',
+    );
+  }
+}
+
+export async function getUserById(userId: string): Promise<User | null> {
+  try {
+    const users = await db.select().from(user).where(eq(user.id, userId));
+    return users[0] || null;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get user by ID',
+    );
+  }
+}
+
+export async function getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | null> {
+  try {
+    const users = await db.select().from(user).where(eq(user.stripeCustomerId, stripeCustomerId));
+    return users[0] || null;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get user by Stripe customer ID',
+    );
+  }
+}
+
+export async function getUserByStripeSubscriptionId(stripeSubscriptionId: string): Promise<User | null> {
+  try {
+    const users = await db.select().from(user).where(eq(user.stripeSubscriptionId, stripeSubscriptionId));
+    return users[0] || null;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get user by Stripe subscription ID',
+    );
+  }
+}
+
 export async function saveChat({
   id,
   userId,

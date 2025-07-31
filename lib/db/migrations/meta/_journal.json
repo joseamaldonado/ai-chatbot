@@ -50,6 +50,20 @@
       "when": 1746118166211,
       "tag": "0006_marvelous_frog_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1753991845953,
+      "tag": "0007_eminent_lilith",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1753991948681,
+      "tag": "0008_nebulous_tenebrous",
+      "breakpoints": true
     }
   ]
 }
