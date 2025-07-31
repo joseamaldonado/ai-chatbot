@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from 'stripe';
 import { updateUserSubscription, getUserByStripeSubscriptionId, getUserByStripeCustomerId } from '@/lib/db/queries';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-07-30.basil',
-});
+import { stripe } from '@/lib/stripe';
 
 const relevantEvents = new Set([
   "checkout.session.completed",
