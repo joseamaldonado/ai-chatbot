@@ -5,8 +5,17 @@ import { createGuestUser, getUser } from '@/lib/db/queries';
 import { authConfig } from './auth.config';
 import { DUMMY_PASSWORD } from '@/lib/constants';
 import type { DefaultJWT } from 'next-auth/jwt';
+import type { User } from '@/lib/db/schema';
 
-export type UserType = 'guest' | 'regular';
+export type UserType = 'guest' | 'regular' | 'subscriber';
+
+function getUserType(user: User): UserType {
+  // Check if user has active subscription
+  if (user.subscriptionStatus === 'active' && user.subscriptionEndsAt && new Date() < user.subscriptionEndsAt) {
+    return 'subscriber';
+  }
+  return 'regular';
+}
 
 declare module 'next-auth' {
   interface Session extends DefaultSession {
@@ -59,7 +68,7 @@ export const {
 
         if (!passwordsMatch) return null;
 
-        return { ...user, type: 'regular' };
+        return { ...user, type: getUserType(user) };
       },
     }),
     Credentials({
