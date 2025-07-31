@@ -24,7 +24,7 @@
 - [AI SDK](https://sdk.vercel.ai/docs)
   - Unified API for generating text, structured objects, and tool calls with LLMs
   - Hooks for building dynamic chat and generative user interfaces
-  - Supports xAI (default), OpenAI, Fireworks, and other model providers
+  - Supports Anthropic (default), OpenAI, xAI, Fireworks, and other model providers
 - [shadcn/ui](https://ui.shadcn.com)
   - Styling with [Tailwind CSS](https://tailwindcss.com)
   - Component primitives from [Radix UI](https://radix-ui.com) for accessibility and flexibility
@@ -36,7 +36,7 @@
 
 ## Model Providers
 
-This template ships with [xAI](https://x.ai) `grok-2-1212` as the default chat model. However, with the [AI SDK](https://sdk.vercel.ai/docs), you can switch LLM providers to [OpenAI](https://openai.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://sdk.vercel.ai/providers/ai-sdk-providers) with just a few lines of code.
+This template ships with [Anthropic's](https://anthropic.com) `claude-sonnet-4-20250514` as the default chat model. However, with the [AI SDK](https://sdk.vercel.ai/docs), you can switch LLM providers to [OpenAI](https://openai.com), [xAI](https://x.ai), [Cohere](https://cohere.com/), and [many more](https://sdk.vercel.ai/providers/ai-sdk-providers) with just a few lines of code.
 
 ## Deploy Your Own
 
@@ -46,7 +46,13 @@ You can deploy your own version of the Next.js AI Chatbot to Vercel with one cli
 
 ## Running locally
 
-You will need to use the environment variables [defined in `.env.example`](.env.example) to run Next.js AI Chatbot. It's recommended you use [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables) for this, but a `.env` file is all that is necessary.
+You will need to set up the following environment variables to run the AI Chatbot:
+
+- `ANTHROPIC_API_KEY` - Your Anthropic API key (get one at [console.anthropic.com](https://console.anthropic.com))
+- `AUTH_SECRET` - A secret key for authentication (generate with `openssl rand -base64 32`)
+- `DATABASE_URL` - Your Neon Postgres database URL
+
+It's recommended you use [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables) for this, but a `.env` file is all that is necessary.
 
 > Note: You should not commit your `.env` file or it will expose secrets that will allow others to control access to your various AI and authentication provider accounts.
 
