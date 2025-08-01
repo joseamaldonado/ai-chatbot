@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronUp } from 'lucide-react';
+
 
 import type { User } from 'next-auth';
 import { signOut, useSession } from 'next-auth/react';
@@ -22,15 +22,21 @@ import { useRouter } from 'next/navigation';
 import { toast } from './toast';
 import { LoaderIcon } from './icons';
 import { guestRegex } from '@/lib/constants';
+import { useState } from 'react';
+import { UpgradeModal } from './upgrade-modal';
+import { ChevronUp, Settings, CreditCard } from 'lucide-react';
 
 export function SidebarUserNav({ user }: { user: User }) {
   const router = useRouter();
   const { data, status } = useSession();
   const { setTheme, resolvedTheme } = useTheme();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const isGuest = guestRegex.test(data?.user?.email ?? '');
+  const isActiveSubscriber = data?.user?.type === 'subscriber';
 
   return (
+    <>
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
@@ -69,8 +75,24 @@ export function SidebarUserNav({ user }: { user: User }) {
               className="cursor-pointer"
               onSelect={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
             >
+              <Settings className="size-4 mr-2" />
               {`Toggle ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`}
             </DropdownMenuItem>
+            
+            {/* Show subscription management for authenticated users */}
+            {!isGuest && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={() => setShowUpgradeModal(true)}
+                >
+                  <CreditCard className="size-4 mr-2" />
+                  {isActiveSubscriber ? 'Manage Subscription' : 'Upgrade Plan'}
+                </DropdownMenuItem>
+              </>
+            )}
+            
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button
@@ -103,5 +125,13 @@ export function SidebarUserNav({ user }: { user: User }) {
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
+    
+    <UpgradeModal
+      isOpen={showUpgradeModal}
+      onClose={() => setShowUpgradeModal(false)}
+      isSubscribed={isActiveSubscriber}
+      trigger="manual"
+    />
+  </>
   );
 }

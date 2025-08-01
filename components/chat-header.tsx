@@ -9,11 +9,14 @@ import { SidebarToggle } from '@/components/sidebar-toggle';
 import { Button } from '@/components/ui/button';
 import { PlusIcon } from './icons';
 import { useSidebar } from './ui/sidebar';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { type VisibilityType } from './visibility-selector';
 // import { VisibilitySelector } from './visibility-selector';
 import type { Session } from 'next-auth';
+import { UpgradeModal } from './upgrade-modal';
+import { Crown } from 'lucide-react';
+import { guestRegex } from '@/lib/constants';
 
 function PureChatHeader({
   chatId,
@@ -30,10 +33,15 @@ function PureChatHeader({
 }) {
   const router = useRouter();
   const { open } = useSidebar();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const { width: windowWidth } = useWindowSize();
+  
+  const isGuest = guestRegex.test(session?.user?.email ?? '');
+  const isActiveSubscriber = session?.user?.type === 'subscriber';
 
   return (
+    <>
     <header className="flex sticky top-0 bg-background py-1.5 items-center px-2 md:px-2 gap-2">
       <SidebarToggle />
 
@@ -74,8 +82,33 @@ function PureChatHeader({
         />
       )} */}
 
+      {/* Upgrade button - show for non-subscribers at the very right */}
+      {!isGuest && !isActiveSubscriber && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              onClick={() => setShowUpgradeModal(true)}
+            >
+              <Crown className="size-4 mr-1" />
+              <span className="hidden sm:inline">Upgrade</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Upgrade to Premium</TooltipContent>
+        </Tooltip>
+      )}
 
     </header>
+    
+    <UpgradeModal
+      isOpen={showUpgradeModal}
+      onClose={() => setShowUpgradeModal(false)}
+      isSubscribed={isActiveSubscriber}
+      trigger="manual"
+    />
+  </>
   );
 }
 

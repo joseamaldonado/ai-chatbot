@@ -22,6 +22,8 @@ import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
 import type { ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import { UpgradeModal } from './upgrade-modal';
+import { guestRegex } from '@/lib/constants';
 
 export function Chat({
   id,
@@ -47,8 +49,12 @@ export function Chat({
 
   const { mutate } = useSWRConfig();
   const { setDataStream } = useDataStream();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const [input, setInput] = useState<string>('');
+  
+  const isGuest = guestRegex.test(session?.user?.email ?? '');
+  const isActiveSubscriber = session?.user?.type === 'subscriber';
 
   const {
     messages,
@@ -86,10 +92,15 @@ export function Chat({
     },
     onError: (error) => {
       if (error instanceof ChatSDKError) {
-        toast({
-          type: 'error',
-          description: error.message,
-        });
+        // Show upgrade modal for rate limiting errors (non-subscribers only)
+        if (error.type === 'rate_limit' && !isActiveSubscriber) {
+          setShowUpgradeModal(true);
+        } else {
+          toast({
+            type: 'error',
+            description: error.message,
+          });
+        }
       }
     },
   });
@@ -178,6 +189,13 @@ export function Chat({
         votes={votes}
         isReadonly={isReadonly}
         selectedVisibilityType={visibilityType}
+      />
+      
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        isSubscribed={isActiveSubscriber}
+        trigger="rate_limit"
       />
     </>
   );

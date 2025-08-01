@@ -10,8 +10,12 @@ import type { User } from '@/lib/db/schema';
 export type UserType = 'guest' | 'regular' | 'subscriber';
 
 function getUserType(user: User): UserType {
-  // Check if user has active subscription
-  if (user.subscriptionStatus === 'active' && user.subscriptionEndsAt && new Date() < user.subscriptionEndsAt) {
+  // Check if user has active subscription (including trial)
+  if (
+    (user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trialing') &&
+    user.subscriptionEndsAt && 
+    new Date() < user.subscriptionEndsAt
+  ) {
     return 'subscriber';
   }
   return 'regular';
@@ -85,6 +89,15 @@ export const {
       if (user) {
         token.id = user.id as string;
         token.type = user.type;
+      }
+
+      // Refresh user data from database to get latest subscription status
+      if (token.id) {
+        const users = await getUser(token.email as string);
+        if (users.length > 0) {
+          const [freshUser] = users;
+          token.type = getUserType(freshUser);
+        }
       }
 
       return token;

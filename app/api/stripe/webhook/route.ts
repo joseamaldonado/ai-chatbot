@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from 'stripe';
 import { updateUserSubscription, getUserByStripeSubscriptionId, getUserByStripeCustomerId } from '@/lib/db/queries';
-import { stripe } from '@/lib/stripe';
+import { stripe } from '@/utils/stripe/config';
 
 const relevantEvents = new Set([
   "checkout.session.completed",
@@ -34,14 +34,14 @@ export async function POST(req: Request) {
     );
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
-    console.log(`❌ Webhook signature verification failed: ${errorMessage}`);
+    console.log(`Webhook signature verification failed: ${errorMessage}`);
     return NextResponse.json(
       { error: `Webhook Error: ${errorMessage}` },
       { status: 400 }
     );
   }
 
-  console.log(`✅ Received event: ${event.type}`);
+  console.log(`Received event: ${event.type}`);
 
   // Only process relevant events
   if (!relevantEvents.has(event.type)) {
@@ -52,29 +52,33 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log('✅ Subscription created:', {
+        console.log('Subscription created:', {
           customerId: session.customer,
           subscriptionId: session.subscription,
           userId: session.metadata?.userId,
           tier: session.metadata?.tier,
         });
         
-        if (session.metadata?.userId) {
+        if (session.metadata?.userId && session.subscription) {
+          // Get the actual subscription to check its status
+          const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+          
           await updateUserSubscription({
             userId: session.metadata.userId,
             stripeCustomerId: session.customer as string,
             stripeSubscriptionId: session.subscription as string,
             subscriptionTier: session.metadata.tier as 'weekly' | 'monthly' | 'yearly',
-            subscriptionStatus: 'active',
+            subscriptionStatus: subscription.status as 'active' | 'canceled' | 'past_due' | 'incomplete' | 'trialing',
+            subscriptionEndsAt: new Date(subscription.items.data[0].current_period_end * 1000),
           });
-          console.log(`✅ Updated subscription for user: ${session.metadata.userId}`);
+          console.log(`Updated subscription for user: ${session.metadata.userId}`);
         }
         break;
       }
 
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log(`🔄 Subscription updated: ${subscription.id} - Status: ${subscription.status}`);
+        console.log(`Subscription updated: ${subscription.id} - Status: ${subscription.status}`);
         
         // Find user by subscription ID and update status
         const user = await getUserByStripeSubscriptionId(subscription.id);
@@ -86,16 +90,16 @@ export async function POST(req: Request) {
               ? new Date(subscription.items.data[0].current_period_end * 1000) 
               : undefined,
           });
-          console.log(`✅ Updated subscription status to ${subscription.status} for user: ${user.id}`);
+          console.log(`Updated subscription status to ${subscription.status} for user: ${user.id}`);
         } else {
-          console.log(`❌ No user found with subscription ID: ${subscription.id}`);
+          console.log(`No user found with subscription ID: ${subscription.id}`);
         }
         break;
       }
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log(`🗑️ Subscription cancelled: ${subscription.id}`);
+        console.log(`Subscription cancelled: ${subscription.id}`);
         
         // Find user by subscription ID and revert to free tier
         const user = await getUserByStripeSubscriptionId(subscription.id);
@@ -106,16 +110,16 @@ export async function POST(req: Request) {
             subscriptionStatus: 'canceled',
             subscriptionEndsAt: new Date(), // Set to now since subscription is cancelled
           });
-          console.log(`✅ Reverted user ${user.id} to free tier due to subscription cancellation`);
+          console.log(`Reverted user ${user.id} to free tier due to subscription cancellation`);
         } else {
-          console.log(`❌ No user found with subscription ID: ${subscription.id}`);
+          console.log(`No user found with subscription ID: ${subscription.id}`);
         }
         break;
       }
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice & { subscription?: string };
-        console.log(`💰 Invoice paid: ${invoice.id}`);
+        console.log(`Invoice paid: ${invoice.id}`);
         
         // For recurring payments, ensure subscription remains active
         if (invoice.subscription) {
@@ -128,9 +132,9 @@ export async function POST(req: Request) {
               userId: user.id,
               subscriptionStatus: 'active', // Payment succeeded, so subscription is active
             });
-            console.log(`✅ Confirmed active subscription for user ${user.id} after successful payment`);
+            console.log(`Confirmed active subscription for user ${user.id} after successful payment`);
           } else {
-            console.log(`❌ No user found with subscription ID: ${subscriptionId}`);
+            console.log(`No user found with subscription ID: ${subscriptionId}`);
           }
         }
         break;
@@ -138,7 +142,7 @@ export async function POST(req: Request) {
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice & { subscription?: string };
-        console.log(`❌ Invoice payment failed: ${invoice.id}`);
+        console.log(`Invoice payment failed: ${invoice.id}`);
         
         // Update user subscription status to 'past_due' when payment fails
         if (invoice.subscription) {
@@ -151,10 +155,10 @@ export async function POST(req: Request) {
               userId: user.id,
               subscriptionStatus: 'past_due', // Payment failed, subscription is past due
             });
-            console.log(`❌ Marked subscription as past_due for user ${user.id} due to failed payment`);
+            console.log(`Marked subscription as past_due for user ${user.id} due to failed payment`);
             // TODO: Send notification email to user about failed payment
           } else {
-            console.log(`❌ No user found with subscription ID: ${subscriptionId}`);
+            console.log(`No user found with subscription ID: ${subscriptionId}`);
           }
         }
         break;
@@ -163,7 +167,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error(`❌ Error processing webhook:`, error);
+    console.error(`Error processing webhook:`, error);
     return NextResponse.json(
       { error: "Webhook processing failed" },
       { status: 500 }
